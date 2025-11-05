@@ -248,51 +248,30 @@ export default function Home() {
 
   <Button
     onClick={async () => {
-      if (!formattedText || formattedText.trim() === "") {
-        toast({
-          title: "No formatted text",
-          description: "Please format your script first",
-          variant: "destructive",
-        });
+      const formattedText = document.getElementById("formattedOutput")?.innerText || "";
+      if (!formattedText.trim()) {
+        alert("Format the script first before exporting.");
         return;
       }
 
-      try {
-        const response = await fetch("/api/export/pdf", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ text: formattedText }),
-        });
+      const response = await fetch("/api/export/pdf", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text: formattedText }),
+      });
 
-        if (!response.ok) {
-          throw new Error("PDF export failed");
-        }
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
 
-        const blob = await response.blob();
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = "script.pdf";
-        document.body.appendChild(a);
-        a.click();
-        window.URL.revokeObjectURL(url);
-        document.body.removeChild(a);
-
-        toast({
-          title: "Success",
-          description: "PDF downloaded successfully",
-        });
-      } catch (error) {
-        toast({
-          title: "Download failed",
-          description: "An error occurred while downloading the PDF",
-          variant: "destructive",
-        });
-      }
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = "script.pdf";
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
     }}
     variant="outline"
     className="mt-4"
-    disabled={!formattedText}
     data-testid="button-download-pdf"
   >
     Download PDF
