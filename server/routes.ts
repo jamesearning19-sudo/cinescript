@@ -30,32 +30,80 @@ const upload = multer({
   },
 });
 
+function formatScreenplay(text: string) {
+  const lines = text.replace(/\r/g, "").split("\n");
+  const isScene = (l: string) => /^(INT\.|EXT\.|INT\/EXT\.)\s/.test(l.trim());
+  const isParenthetical = (l: string) => /^\(.*\)$/.test(l.trim());
+  const isCharacter = (l: string) => /^[A-Z0-9 .'-]{2,}$/.test(l.trim()) && l.trim().length <= 30 && !isScene(l.trim());
+  const out: string[] = [];
+  let lastWasCharacter = false;
+  for (let raw of lines) {
+    const l = raw.trim();
+    if (!l) { out.push(""); lastWasCharacter = false; continue; }
+    if (isScene(l)) { out.push(l.toUpperCase()); out.push(""); lastWasCharacter = false; continue; }
+    if (isCharacter(l)) { out.push("          " + l.toUpperCase()); lastWasCharacter = true; continue; }
+    if (isParenthetical(l) && lastWasCharacter) { out.push("        " + l); continue; }
+    if (lastWasCharacter) out.push("        " + l);
+    else out.push(l);
+  }
+  return out.join("\n");
+}
+
+function formatMusicVideo(text: string) {
+  return {
+    headers: ["VIDEO (Visuals / Shots)", "AUDIO (Lyrics / Vocals)"],
+    rows: text.replace(/\r/g, "").split("\n").map(l => l.trim()).map(l =>
+      /^VIS:/i.test(l) ? [l.replace(/^VIS:\s*/i, ""), ""] :
+      /^AUD:/i.test(l) ? ["", l.replace(/^AUD:\s*/i, "")] :
+      ["(Describe shot here)", l]
+    )
+  };
+}
+
+function formatPSA(text: string) {
+  return {
+    headers: ["NARRATION (VO / Dialogue)", "CAMERA (Shots / Direction)"],
+    rows: text.replace(/\r/g, "").split("\n").map(l => l.trim()).map(l =>
+      /^CAM:/i.test(l) ? ["", l.replace(/^CAM:\s*/i, "")] :
+      /^NAR:/i.test(l) ? [l.replace(/^NAR:\s*/i, ""), ""] :
+      [l, ""]
+    )
+  };
+}
+
+function formatStoryboard(text: string) {
+  const blocks = text.replace(/\r/g, "").split(/\n\s*\n/).filter(Boolean).slice(0,4);
+  const frames = blocks.map((b, i) => ({ number: i+1, description: b.trim() }));
+  while (frames.length < 4) frames.push({ number: frames.length+1, description: "(Empty)" });
+  return { frames };
+}
+
 export async function registerRoutes(app: Express): Promise<Server> {
   app.use(express.json());
   
   // === SCRIPT FORMATTER ENDPOINT ===
   app.post("/api/format", async (req, res) => {
-  try {
-    const { text } = req.body;
+    try {
+      const { text, formatType } = req.body;
 
-    if (!text || text.trim() === "") {
-      return res.status(400).json({ error: "No text provided" });
+      if (!text || text.trim() === "") {
+        return res.status(400).json({ error: "No text provided" });
+      }
+
+      let payload;
+      switch (formatType) {
+        case "screenplay": payload = { formatted: formatScreenplay(text) }; break;
+        case "musicvideo": payload = formatMusicVideo(text); break;
+        case "psa": payload = formatPSA(text); break;
+        case "storyboard": payload = formatStoryboard(text); break;
+        default: payload = { formatted: text };
+      }
+      return res.json(payload);
+    } catch (err) {
+      console.error("Format Error:", err);
+      return res.status(500).json({ error: "Formatting failed" });
     }
-
-    // TEMP BASIC FORMAT CLEANUP (we will upgrade later)
-    const formatted = text
-      .replace(/\r/g, "")
-      .split("\n")
-      .map((line: string) => line.trim())
-      .filter((line: string) => line !== "")
-      .join("\n");
-
-    return res.json({ formatted });
-  } catch (err) {
-    console.error("Format Error:", err);
-    return res.status(500).json({ error: "Formatting failed" });
-  }
-});
+  });
 
   app.post("/api/upload", (req, res) => {
     upload.single("file")(req, res, async (err) => {

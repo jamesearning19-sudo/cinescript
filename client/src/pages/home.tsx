@@ -115,15 +115,31 @@ export default function Home() {
 <Card className="p-4 mt-8">
   <h2 className="text-xl font-semibold mb-3">Script Formatter</h2>
 
+  <label htmlFor="formatType" className="block text-sm font-medium mb-2">
+    Format Type
+  </label>
+  <select
+    id="formatType"
+    className="w-full p-2 border rounded mb-4"
+    data-testid="select-format-type"
+  >
+    <option value="screenplay">Screenplay</option>
+    <option value="musicvideo">Music Video</option>
+    <option value="psa">PSA</option>
+    <option value="storyboard">Storyboard</option>
+  </select>
+
   <textarea
     id="scriptInput"
     placeholder="Paste your script, lyrics, narration, or scene breakdown here..."
     className="w-full h-48 p-2 border rounded mb-4"
+    data-testid="textarea-script-input"
   />
 
   <Button
     onClick={async () => {
       const text = (document.getElementById("scriptInput") as HTMLTextAreaElement).value;
+      const formatType = (document.getElementById("formatType") as HTMLSelectElement).value;
 
       if (!text.trim()) {
         toast({
@@ -137,21 +153,87 @@ export default function Home() {
       const response = await fetch("/api/format", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text }),
+        body: JSON.stringify({ text, formatType }),
       });
 
       const data = await response.json();
-      const outputBox = document.getElementById("formattedOutput") as HTMLPreElement;
-      outputBox.textContent = data.formatted;
+      const outputBox = document.getElementById("formattedOutput") as HTMLDivElement;
+
+      // Clear previous output
+      outputBox.innerHTML = "";
+
+      if (formatType === "screenplay") {
+        // Display plaintext in a <pre>
+        const pre = document.createElement("pre");
+        pre.textContent = data.formatted;
+        pre.className = "w-full p-2 whitespace-pre-wrap";
+        outputBox.appendChild(pre);
+      } else if (formatType === "musicvideo" || formatType === "psa") {
+        // Display two-column table
+        const table = document.createElement("table");
+        table.className = "w-full border-collapse border";
+        
+        // Headers
+        const thead = document.createElement("thead");
+        const headerRow = document.createElement("tr");
+        data.headers.forEach((header: string) => {
+          const th = document.createElement("th");
+          th.textContent = header;
+          th.className = "border p-2 bg-muted font-semibold text-left";
+          headerRow.appendChild(th);
+        });
+        thead.appendChild(headerRow);
+        table.appendChild(thead);
+
+        // Rows
+        const tbody = document.createElement("tbody");
+        data.rows.forEach((row: string[]) => {
+          const tr = document.createElement("tr");
+          row.forEach((cell: string) => {
+            const td = document.createElement("td");
+            td.textContent = cell;
+            td.className = "border p-2";
+            tr.appendChild(td);
+          });
+          tbody.appendChild(tr);
+        });
+        table.appendChild(tbody);
+        outputBox.appendChild(table);
+      } else if (formatType === "storyboard") {
+        // Display four frame boxes in a 2x2 grid
+        const grid = document.createElement("div");
+        grid.className = "grid grid-cols-2 gap-4";
+        
+        data.frames.forEach((frame: { number: number; description: string }) => {
+          const frameBox = document.createElement("div");
+          frameBox.className = "border rounded p-4";
+          
+          const frameLabel = document.createElement("div");
+          frameLabel.textContent = `Frame ${frame.number}`;
+          frameLabel.className = "font-semibold mb-2";
+          
+          const frameDesc = document.createElement("div");
+          frameDesc.textContent = frame.description;
+          frameDesc.className = "text-sm";
+          
+          frameBox.appendChild(frameLabel);
+          frameBox.appendChild(frameDesc);
+          grid.appendChild(frameBox);
+        });
+        
+        outputBox.appendChild(grid);
+      }
     }}
+    data-testid="button-format"
   >
     Format Script
   </Button>
 
-  <pre
+  <div
     id="formattedOutput"
-    className="w-full h-48 p-2 border mt-4 rounded overflow-auto whitespace-pre-wrap bg-gray-50"
-  ></pre>
+    className="w-full min-h-48 p-2 border mt-4 rounded overflow-auto bg-muted/30"
+    data-testid="output-formatted"
+  ></div>
 </Card>
         <div className="mt-12">
           <h2 className="text-xl font-semibold mb-4">About This Tool</h2>
