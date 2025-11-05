@@ -79,6 +79,13 @@ function formatStoryboard(text: string) {
   return { frames };
 }
 
+function cleanText(input: string) {
+  return input
+    .replace(/[\u2018|\u2019]/g, "'")
+    .replace(/[\u201C|\u201D]/g, '"')
+    .replace(/[\u2022|\u00B7|\u25CF]/g, '-');
+}
+
 export async function registerRoutes(app: Express): Promise<Server> {
   app.use(express.json());
   
@@ -113,6 +120,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "No text provided" });
       }
 
+      // Sanitize text to ensure UTF-8 safe characters
+      const cleanedText = cleanText(text);
+
       const doc = new PDFDocument({ margin: 40 });
       res.setHeader("Content-Type", "application/pdf");
       res.setHeader("Content-Disposition", "attachment; filename=script.pdf");
@@ -122,7 +132,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       doc.registerFont("NotoSans", fontPath);
 
       doc.pipe(res);
-      doc.font("NotoSans").fontSize(12).text(text, { lineGap: 6 });
+      doc.font("NotoSans").fontSize(12).text(cleanedText, { lineGap: 6 });
       doc.end();
     } catch (err) {
       console.error("PDF Export Error:", err);
