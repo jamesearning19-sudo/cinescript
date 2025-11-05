@@ -111,7 +111,48 @@ export default function Home() {
             </Button>
           </div>
         </Card>
+{/* === SCRIPT FORMATTER SECTION === */}
+<Card className="p-4 mt-8">
+  <h2 className="text-xl font-semibold mb-3">Script Formatter</h2>
 
+  <textarea
+    id="scriptInput"
+    placeholder="Paste your script, lyrics, narration, or scene breakdown here..."
+    className="w-full h-48 p-2 border rounded mb-4"
+  />
+
+  <Button
+    onClick={async () => {
+      const text = (document.getElementById("scriptInput") as HTMLTextAreaElement).value;
+
+      if (!text.trim()) {
+        toast({
+          title: "No text found",
+          description: "Paste something to format",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      const response = await fetch("/api/format", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text }),
+      });
+
+      const data = await response.json();
+      const outputBox = document.getElementById("formattedOutput") as HTMLPreElement;
+      outputBox.textContent = data.formatted;
+    }}
+  >
+    Format Script
+  </Button>
+
+  <pre
+    id="formattedOutput"
+    className="w-full h-48 p-2 border mt-4 rounded overflow-auto whitespace-pre-wrap bg-gray-50"
+  ></pre>
+</Card>
         <div className="mt-12">
           <h2 className="text-xl font-semibold mb-4">About This Tool</h2>
           <div className="prose prose-sm max-w-none">

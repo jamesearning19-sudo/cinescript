@@ -30,8 +30,30 @@ const upload = multer({
   },
 });
 
-export async function registerRoutes(app: Express): Promise<Server> {
-  app.post("/api/upload", (req, res) => {
+export async function registerRoutes(app: Express): Promise<Server> {app.use(express.json());
+  // === SCRIPT FORMATTER ENDPOINT ===
+app.post("/api/format", async (req, res) => {
+  try {
+    const { text } = req.body;
+
+    if (!text || text.trim() === "") {
+      return res.status(400).json({ error: "No text provided" });
+    }
+
+    // TEMP BASIC FORMAT CLEANUP (we will upgrade later)
+    const formatted = text
+      .replace(/\r/g, "")
+      .split("\n")
+      .map(line => line.trim())
+      .filter(line => line !== "")
+      .join("\n");
+
+    return res.json({ formatted });
+  } catch (err) {
+    console.error("Format Error:", err);
+    return res.status(500).json({ error: "Formatting failed" });
+  }
+});app.post("/api/upload", (req, res) => {
     upload.single("file")(req, res, async (err) => {
       if (err instanceof multer.MulterError) {
         if (err.code === "LIMIT_FILE_SIZE") {
