@@ -1,4 +1,4 @@
-import type { Express } from "express";
+import express, { type Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import multer from "multer";
@@ -30,9 +30,11 @@ const upload = multer({
   },
 });
 
-export async function registerRoutes(app: Express): Promise<Server> {app.use(express.json());
+export async function registerRoutes(app: Express): Promise<Server> {
+  app.use(express.json());
+  
   // === SCRIPT FORMATTER ENDPOINT ===
-app.post("/api/format", async (req, res) => {
+  app.post("/api/format", async (req, res) => {
   try {
     const { text } = req.body;
 
@@ -44,8 +46,8 @@ app.post("/api/format", async (req, res) => {
     const formatted = text
       .replace(/\r/g, "")
       .split("\n")
-      .map(line => line.trim())
-      .filter(line => line !== "")
+      .map((line: string) => line.trim())
+      .filter((line: string) => line !== "")
       .join("\n");
 
     return res.json({ formatted });
@@ -53,7 +55,9 @@ app.post("/api/format", async (req, res) => {
     console.error("Format Error:", err);
     return res.status(500).json({ error: "Formatting failed" });
   }
-});app.post("/api/upload", (req, res) => {
+});
+
+  app.post("/api/upload", (req, res) => {
     upload.single("file")(req, res, async (err) => {
       if (err instanceof multer.MulterError) {
         if (err.code === "LIMIT_FILE_SIZE") {
