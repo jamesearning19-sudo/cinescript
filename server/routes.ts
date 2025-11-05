@@ -117,8 +117,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.setHeader("Content-Type", "application/pdf");
       res.setHeader("Content-Disposition", "attachment; filename=script.pdf");
 
+      // Register and use NotoSans font for full Unicode support
+      const fontPath = path.join(process.cwd(), "server/fonts/NotoSans-Regular.ttf");
+      doc.registerFont("NotoSans", fontPath);
+
       doc.pipe(res);
-      doc.font("Times-Roman").fontSize(12).text(text, { lineGap: 6 });
+      doc.font("NotoSans").fontSize(12).text(text, { lineGap: 6 });
       doc.end();
     } catch (err) {
       console.error("PDF Export Error:", err);
