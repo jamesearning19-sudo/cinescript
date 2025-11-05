@@ -7,6 +7,7 @@ import { useToast } from "@/hooks/use-toast";
 export default function Home() {
   const [file, setFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [formattedText, setFormattedText] = useState<string>("");
   const { toast } = useToast();
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -168,6 +169,7 @@ export default function Home() {
         pre.textContent = data.formatted;
         pre.className = "w-full p-2 whitespace-pre-wrap";
         outputBox.appendChild(pre);
+        setFormattedText(data.formatted);
       } else if (formatType === "musicvideo" || formatType === "psa") {
         // Display two-column table
         const table = document.createElement("table");
@@ -199,6 +201,14 @@ export default function Home() {
         });
         table.appendChild(tbody);
         outputBox.appendChild(table);
+        
+        // Convert table to text format for PDF export
+        let textFormat = data.headers.join(" | ") + "\n";
+        textFormat += "=".repeat(60) + "\n";
+        data.rows.forEach((row: string[]) => {
+          textFormat += row.join(" | ") + "\n";
+        });
+        setFormattedText(textFormat);
       } else if (formatType === "storyboard") {
         // Display four frame boxes in a 2x2 grid
         const grid = document.createElement("div");
@@ -222,11 +232,70 @@ export default function Home() {
         });
         
         outputBox.appendChild(grid);
+        
+        // Convert storyboard to text format for PDF export
+        let textFormat = "STORYBOARD\n\n";
+        data.frames.forEach((frame: { number: number; description: string }) => {
+          textFormat += `Frame ${frame.number}:\n${frame.description}\n\n`;
+        });
+        setFormattedText(textFormat);
       }
     }}
     data-testid="button-format"
   >
     Format Script
+  </Button>
+
+  <Button
+    onClick={async () => {
+      if (!formattedText || formattedText.trim() === "") {
+        toast({
+          title: "No formatted text",
+          description: "Please format your script first",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      try {
+        const response = await fetch("/api/export/pdf", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ text: formattedText }),
+        });
+
+        if (!response.ok) {
+          throw new Error("PDF export failed");
+        }
+
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = "script.pdf";
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+
+        toast({
+          title: "Success",
+          description: "PDF downloaded successfully",
+        });
+      } catch (error) {
+        toast({
+          title: "Download failed",
+          description: "An error occurred while downloading the PDF",
+          variant: "destructive",
+        });
+      }
+    }}
+    variant="outline"
+    className="mt-4"
+    disabled={!formattedText}
+    data-testid="button-download-pdf"
+  >
+    Download PDF
   </Button>
 
   <div

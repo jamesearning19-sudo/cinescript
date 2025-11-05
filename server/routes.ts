@@ -4,6 +4,7 @@ import { storage } from "./storage";
 import multer from "multer";
 import path from "path";
 import fs from "fs";
+import PDFDocument from "pdfkit";
 
 const uploadDir = path.join(process.cwd(), "uploads");
 if (!fs.existsSync(uploadDir)) {
@@ -102,6 +103,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (err) {
       console.error("Format Error:", err);
       return res.status(500).json({ error: "Formatting failed" });
+    }
+  });
+
+  app.post("/api/export/pdf", async (req, res) => {
+    try {
+      const { text } = req.body;
+      if (!text || text.trim() === "") {
+        return res.status(400).json({ error: "No text provided" });
+      }
+
+      const doc = new PDFDocument({ margin: 40 });
+      res.setHeader("Content-Type", "application/pdf");
+      res.setHeader("Content-Disposition", "attachment; filename=script.pdf");
+
+      doc.pipe(res);
+      doc.font("Times-Roman").fontSize(12).text(text, { lineGap: 6 });
+      doc.end();
+    } catch (err) {
+      console.error("PDF Export Error:", err);
+      return res.status(500).json({ error: "PDF export failed" });
     }
   });
 
